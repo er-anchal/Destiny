@@ -13,18 +13,18 @@ import 'swiper/css/pagination';
 
 const HoneymoonPackages = () => {
   const [dynamicPackages, setDynamicPackages] = useState([]);
-
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   useEffect(() => {
     const fetchPackages = async () => {
       try {
-        const res = await axios.get('http://localhost:5001/api/packages?category=honeymoon');
+        const res = await axios.get(`${API_URL}/api/packages?category=honeymoon`);
         setDynamicPackages(mapDbToData(res.data));
       } catch (err) {
         console.error("Error fetching dynamic honeymoon packages:", err);
       }
     };
     fetchPackages();
-  }, []);
+  }, [API_URL]);
 
   // ✅ HYBRID LOGIC: Merge Database Data + Static Data
   const allPackages = [...dynamicPackages, ...honeymoonPackages];

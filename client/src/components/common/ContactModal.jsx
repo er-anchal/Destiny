@@ -26,7 +26,7 @@ const ContactModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: '' });
@@ -48,7 +48,7 @@ const ContactModal = ({ isOpen, onClose }) => {
 
     setLoading(true);
     try {
-      await axios.post('http://localhost:5001/api/inquiries', { ...formData, source: 'Contact Modal' });
+      await axios.post(`${API_URL}/api/inquiries`, { ...formData, source: 'Contact Modal' });
       alert('Thanks for reaching out! We will contact you shortly.');
       setFormData({ name: '', email: '', phone: '', message: '' });
       onClose(); 

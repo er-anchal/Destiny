@@ -17,6 +17,7 @@ const SignInForm = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,7 +63,7 @@ const SignInForm = () => {
     setIsLoading(true);
     try {
       // Calls your new backend route
-      await axios.post('http://localhost:5001/api/auth/reset-password', { 
+      await axios.post(`${API_URL}/api/auth/reset-password`, { 
         email: formData.email, 
         newPassword: formData.newPassword 
       });

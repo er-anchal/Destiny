@@ -5,11 +5,11 @@ import { honeymoonDestinations, mapDbToData } from '../../../data';
 
 const RomanticDestinations = () => {
   const [dynamicDestinations, setDynamicDestinations] = useState([]);
-
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   useEffect(() => {
     const fetchHoneymoonDestinations = async () => {
       try {
-        const res = await axios.get('http://localhost:5001/api/packages?category=honeymoon');
+        const res = await axios.get(`${API_URL}/api/packages?category=honeymoon`);
         setDynamicDestinations(mapDbToData(res.data));
       } catch (err) {
         console.error("Error fetching Romantic destinations:", err);
@@ -17,7 +17,7 @@ const RomanticDestinations = () => {
     };
 
     fetchHoneymoonDestinations();
-  }, []);
+  }, [API_URL]);
 
   // Merge Database Packages with Static Honeymoon Destinations
   const mergedDestinations = [...dynamicDestinations, ...honeymoonDestinations];

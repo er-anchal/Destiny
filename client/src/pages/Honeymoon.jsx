@@ -19,13 +19,13 @@ import HoneymoonContact from '../components/sections/Honeymoon/HoneymoonContact'
 const Honeymoon = () => {
   const [destinations, setDestinations] = useState(defaultDestinations);
   const [packages, setPackages] = useState(defaultPackages);
-
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   useEffect(() => {
     const fetchHoneymoonData = async () => {
       try {
         const [destRes, pkgRes] = await Promise.all([
-          axios.get('http://localhost:5001/api/packages?category=honeymoon-dest'),
-          axios.get('http://localhost:5001/api/packages?category=honeymoon')
+          axios.get(`${API_URL}/api/packages?category=honeymoon-dest`),
+          axios.get(`${API_URL}/api/packages?category=honeymoon`)
         ]);
         
         // Merge Static + Dynamic

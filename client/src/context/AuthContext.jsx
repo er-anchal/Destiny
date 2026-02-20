@@ -7,6 +7,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Define the dynamic API URL
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
     if (userInfo) setUser(userInfo);
@@ -14,14 +17,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const { data } = await axios.post('http://localhost:5001/api/auth/login', { email, password });
+    // Replaced hardcoded localhost with API_URL
+    const { data } = await axios.post(`${API_URL}/api/auth/login`, { email, password });
     localStorage.setItem('userInfo', JSON.stringify(data));
     setUser(data);
     return data;
   };
 
   const signup = async (username, email, password) => {
-    const { data } = await axios.post('http://localhost:5001/api/auth/signup', { username, email, password });
+    // Replaced hardcoded localhost with API_URL
+    const { data } = await axios.post(`${API_URL}/api/auth/signup`, { username, email, password });
     localStorage.setItem('userInfo', JSON.stringify(data));
     setUser(data);
     return data;

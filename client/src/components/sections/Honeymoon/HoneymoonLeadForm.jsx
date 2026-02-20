@@ -7,7 +7,7 @@ const HoneymoonLeadForm = () => {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: '' });
@@ -28,7 +28,7 @@ const HoneymoonLeadForm = () => {
 
     setLoading(true);
     try {
-      await axios.post('http://localhost:5001/api/inquiries', { ...formData, message: 'Interested in Honeymoon Package', source: 'Honeymoon Lead Form' });
+      await axios.post(`${API_URL}/api/inquiries`, { ...formData, message: 'Interested in Honeymoon Package', source: 'Honeymoon Lead Form' });
       alert('Honeymoon inquiry sent! We will contact you soon.');
       setFormData({ name: '', email: '', phone: '' });
     } catch (error) { alert('Failed to send details. Please try again.'); } 

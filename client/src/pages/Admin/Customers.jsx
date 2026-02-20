@@ -9,12 +9,12 @@ const Customers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [userSearchTerm, setUserSearchTerm] = useState(''); 
   const { user } = useAuth();
-
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   useEffect(() => {
-    // Fetch Inquiries
+
     const fetchInquiries = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5001/api/inquiries', {
+        const { data } = await axios.get(`${API_URL}/api/inquiries`, {
           headers: { Authorization: `Bearer ${user.token}` }
         });
         setInquiries(data);
@@ -26,7 +26,7 @@ const Customers = () => {
     // Fetch Registered Users
     const fetchUsers = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5001/api/admin/customers', {
+        const { data } = await axios.get(`${API_URL}/api/admin/customers`, {
           headers: { Authorization: `Bearer ${user.token}` }
         });
         setUsersList(data);
@@ -45,7 +45,7 @@ const Customers = () => {
   const handleDelete = async (id) => {
     if(!window.confirm("Delete this message?")) return;
     try {
-        await axios.delete(`http://localhost:5001/api/inquiries/${id}`, {
+        await axios.delete(`${API_URL}/api/inquiries/${id}`, {
             headers: { Authorization: `Bearer ${user.token}` }
         });
         setInquiries(inquiries.filter(i => i._id !== id));

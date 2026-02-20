@@ -10,7 +10,7 @@ const ContactForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
-
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -33,7 +33,7 @@ const ContactForm = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5001/api/inquiries', { ...formData, source: 'Trip Details Contact' });
+      const response = await axios.post(`${API_URL}/api/inquiries`, { ...formData, source: 'Trip Details Contact' });
       if (response.status === 201) {
         setShowSuccess(true);
         setFormData({ name: '', email: '', phone: '', message: '' }); 

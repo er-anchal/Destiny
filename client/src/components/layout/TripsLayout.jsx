@@ -17,12 +17,13 @@ const TripsLayout = ({
   category // Pass 'flipcard-india' or 'flipcard-intl' from parent
 }) => {
   const [dynamicData, setDynamicData] = useState([]);
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
   useEffect(() => {
     if (category) {
       const fetchData = async () => {
         try {
-          const { data } = await axios.get(`http://localhost:5001/api/packages?category=${category}`);
+          const { data } = await axios.get(`${API_URL}/api/packages?category=${category}`);
           setDynamicData(mapDbToData(data));
         } catch (err) {
           console.error("Error fetching trip layout data:", err);

@@ -25,15 +25,16 @@ const Home = () => {
     const [intl, setIntl] = useState([]);
     const [india, setIndia] = useState([]);
     const [romantic, setRomantic] = useState([]);
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
     useEffect(() => {
         const fetchHomeData = async () => {
             try {
                 const [dRes, iRes, nRes, rRes] = await Promise.all([
-                    axios.get('http://localhost:5001/api/packages?category=deal'),
-                    axios.get('http://localhost:5001/api/packages?category=international'),
-                    axios.get('http://localhost:5001/api/packages?category=india'),
-                    axios.get('http://localhost:5001/api/packages?category=honeymoon')
+                    axios.get(`${API_URL}/api/packages?category=deal`),
+                    axios.get(`${API_URL}/api/packages?category=international`),
+                    axios.get(`${API_URL}/api/packages?category=india`),
+                    axios.get(`${API_URL}/api/packages?category=honeymoon`)
                 ]);
                 setDeals(mapDbToData(dRes.data));
                 setIntl(mapDbToData(iRes.data));

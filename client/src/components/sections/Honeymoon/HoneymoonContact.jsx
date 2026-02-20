@@ -14,6 +14,7 @@ const HoneymoonContact = () => {
   });
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
   // ✅ Handle Input Change
   const handleChange = (e) => {
@@ -31,7 +32,7 @@ const HoneymoonContact = () => {
     };
 
     try {
-      const response = await axios.post('http://localhost:5001/api/inquiries', payload);
+      const response = await axios.post(`${API_URL}/api/inquiries`, payload);
       
       if (response.status === 201) {
         setShowSuccess(true); // Show the success popup

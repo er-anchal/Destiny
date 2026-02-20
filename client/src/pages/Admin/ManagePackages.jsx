@@ -30,6 +30,7 @@ const ManagePackages = () => {
   const [tempInc, setTempInc] = useState('');
   const [tempExc, setTempExc] = useState('');
   const [tempDay, setTempDay] = useState({ day: 1, title: '', desc: '' });
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
   const handleInputChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -46,7 +47,7 @@ const ManagePackages = () => {
   };
 
   const fetchPackages = async () => {
-    try { const { data } = await axios.get('http://localhost:5001/api/packages'); setPackages(data); } 
+    try { const { data } = await axios.get(`${API_URL}/api/packages`); setPackages(data); } 
     catch (err) { console.error(err); } finally { setLoading(false); }
   };
   useEffect(() => { fetchPackages(); }, []);
@@ -82,7 +83,7 @@ const ManagePackages = () => {
     if (Object.keys(newErrors).length > 0) return setErrors(newErrors);
 
     try {
-      await axios.post('http://localhost:5001/api/packages', { ...form, gallery: form.backImage ? [form.backImage] : [] }, { headers: { Authorization: `Bearer ${user.token}` } });
+      await axios.post(`${API_URL}/api/packages`, { ...form, gallery: form.backImage ? [form.backImage] : [] }, { headers: { Authorization: `Bearer ${user.token}` } });
       fetchPackages();
       setForm({ title: '', price: '', image: '', category: 'international', duration: '', location: '', description: '', isFeatured: false, backImage: '', inclusions: [], exclusions: [], itinerary: [] });
       alert('✨ Item added successfully!');
@@ -91,7 +92,7 @@ const ManagePackages = () => {
 
   const handleDelete = async (id) => {
     if(!window.confirm('Delete this item?')) return;
-    try { await axios.delete(`http://localhost:5001/api/packages/${id}`, { headers: { Authorization: `Bearer ${user.token}` } }); fetchPackages(); } 
+    try { await axios.delete(`${API_URL}/api/packages/${id}`, { headers: { Authorization: `Bearer ${user.token}` } }); fetchPackages(); } 
     catch (err) { alert('Error deleting item'); }
   };
 

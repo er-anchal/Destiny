@@ -151,7 +151,8 @@ const TripDetails = () => {
       }
 
       try {
-        const res = await axios.get(`http://localhost:5001/api/packages/${id}`);
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+        const res = await axios.get(`${API_URL}/api/packages/${id}`);
         const normalized = normalizeData(res.data);
         setPackageData(normalized);
         setSimilarTrips(getSimilarPackages(normalized));
