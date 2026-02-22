@@ -39,8 +39,10 @@ const ManagePackages = () => {
 
   const handleUpload = (field) => {
     if (!window.cloudinary) return alert("Cloudinary script not found. Please add it to index.html");
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
     window.cloudinary.openUploadWidget(
-      { cloudName: "dafdko2tk", uploadPreset: "fuemyauo", sources: ['local'], multiple: false, resourceType: "image", 
+      { cloudName: cloudName, uploadPreset: uploadPreset, sources: ['local'], multiple: false, resourceType: "image", 
         clientAllowedFormats: ["png", "jpeg", "jpg", "webp"] },
       (error, result) => { if (!error && result && result.event === "success") handleInputChange(field, result.info.secure_url); }
     );
