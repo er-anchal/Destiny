@@ -42,7 +42,7 @@ import dubai from './assets/images/International/dubai.webp';
 import spain from './assets/images/International/Spain.webp';
 import singapore from './assets/images/International/singapore.webp';
 import georgia from './assets/images/International/georiga.webp';
-import kazakashtan from './assets/images/International/kazakashtan.webp';
+import kazakashtan from './assets/images/International/Kazakashtan.webp';
 
 // India Images
 import himachal from './assets/images/Indian/himachal.webp';
