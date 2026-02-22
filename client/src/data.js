@@ -72,7 +72,7 @@ import dubai_card from './assets/images/International/dubai.webp';
 import spain_card from './assets/images/International/Spain_card.webp';
 import singapore_card from './assets/images/International/singapore_card.webp';
 import georgia_card from './assets/images/International/Georgia-card.webp';
-import kazakashtan_card from './assets/images/International/kazakhstan_card.webp';
+import kazakashtan_card from './assets/images/International/Kazakhstan_card.webp';
 
 // Romantic/Honeymoon Specific Images
 import rom_card_1 from './assets/images/romantic/card_1.webp';
