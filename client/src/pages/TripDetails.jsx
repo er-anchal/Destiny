@@ -10,6 +10,7 @@ import {
   Phone,
   ShieldCheck,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext"; // ADDED: Import useAuth
 import {
   honeymoonPackages,
   indiaData,
@@ -25,7 +26,7 @@ import {
 } from "../data";
 import Footer from "../components/layout/Footer/Footer";
 import TripCard from "../components/common/Cards/TripCard/TripCard";
-// Add this right after your imports
+
 const loadScript = (src) => {
   return new Promise((resolve) => {
     const script = document.createElement("script");
@@ -37,7 +38,6 @@ const loadScript = (src) => {
 };
 
 // --- HYBRID DATA UTILS ---
-
 const getAllStaticPackages = () => [
   ...(honeymoonPackages || []),
   ...(indiaData || []),
@@ -189,6 +189,7 @@ const getSimilarPackages = (currentPkg) => {
 const TripDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth(); // ADDED: Extract user from context
   const [packageData, setPackageData] = useState(null);
   const [similarTrips, setSimilarTrips] = useState([]);
   const [activeTab, setActiveTab] = useState("itinerary");
@@ -239,20 +240,21 @@ const TripDetails = () => {
   }, [id]);
 
   const handleBooking = async () => {
-    // 1. Requirement: If price is not available (0), alert and stop execution
+    // ADDED: Prevent unauthenticated users from trying to pay
+    if (!user) {
+      alert("Please login to book a trip!");
+      navigate('/login');
+      return;
+    }
+
     if (numericPrice === 0) {
       alert("contact us for the pricing");
       return;
     }
 
-   // 2. Form Validation Logic (Updated with scroll & alert)
     if (!travelDate || !travelers) {
       setFormError(!travelDate ? 'date' : 'travelers');
-      
-      // Tell mobile users what went wrong
       alert("Please select your Travel Date and number of Travelers first.");
-      
-      // Auto-scroll to the form
       const formSection = document.getElementById('booking-section');
       if (formSection) {
         formSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -260,15 +262,11 @@ const TripDetails = () => {
       return;
     }
 
-    setFormError(''); // Clear errors if valid
+    setFormError(''); 
 
-    // 3. Calculate dynamic total amount
     const totalAmountToPay = numericPrice * multiplier;
 
-    // 4. Load Razorpay SDK
-    const res = await loadScript(
-      "https://checkout.razorpay.com/v1/checkout.js",
-    );
+    const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
     if (!res) {
       alert("Razorpay SDK failed to load. Please check your connection.");
       return;
@@ -277,39 +275,35 @@ const TripDetails = () => {
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
     try {
-      // 5. Create Order on backend
-      const orderResponse = await axios.post(
-        `${API_URL}/api/payment/create-order`,
-        {
-          amount: totalAmountToPay,
-        },
-      );
+      const orderResponse = await axios.post(`${API_URL}/api/payment/create-order`, {
+        amount: totalAmountToPay,
+      });
       const orderData = orderResponse.data;
 
-      // 6. Initialize Razorpay Checkout
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Destiny Travels",
         description: `Booking: ${packageData.title}`,
-        image: assets.logo, // Optional: Uses your existing logo import
+        image: assets.logo, 
         order_id: orderData.id,
         handler: async function (response) {
           try {
-            // 7. Verify payment signature on backend
-            const verifyResponse = await axios.post(
-              `${API_URL}/api/payment/verify-payment`,
-              {
+            // UPDATED: Now sends complete details to DB
+            const verifyResponse = await axios.post(`${API_URL}/api/payment/verify-payment`, {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-              },
-            );
+                userId: user._id, 
+                packageTitle: packageData.title, 
+                amount: totalAmountToPay, 
+                travelDate: travelDate, 
+                travelers: travelers 
+            });
 
             if (verifyResponse.status === 200) {
               alert("Payment Successful! Your trip is booked.");
-              // Optional for later: navigate('/success-page');
             }
           } catch (err) {
             console.error("Verification error:", err);
@@ -317,16 +311,15 @@ const TripDetails = () => {
           }
         },
         prefill: {
-          name: "Test Student",
-          email: "student@college.edu",
+          name: user.username, // Uses actual user info now
+          email: user.email,
           contact: "9999999999",
         },
         theme: {
-          color: "#f68a95", // Matches your exact Tailwind theme
+          color: "#f68a95", 
         },
       };
 
-      // 8. Open the Modal
       const paymentObject = new window.Razorpay(options);
       paymentObject.open();
     } catch (err) {
@@ -336,47 +329,25 @@ const TripDetails = () => {
   };
 
   // --- Dynamic Pricing Logic ---
-  // Extract numeric value from strings like "Starts Rs. 18,999"
-  const numericPrice = packageData
-    ? Number(packageData.price.toString().replace(/[^0-9]/g, ""))
-    : 0;
-  // If '3+', treat as 3 for calculation. If null, treat as 1 (base price).
+  const numericPrice = packageData ? Number(packageData.price.toString().replace(/[^0-9]/g, "")) : 0;
   const multiplier = travelers === "3+" ? 3 : travelers || 1;
-  // Calculate display string
-  const displayPrice =
-    numericPrice > 0
-      ? `₹${(numericPrice * multiplier).toLocaleString("en-IN")}`
-      : packageData?.price;
-
-  // --- Date Validation Logic ---
-  // Get today's date in YYYY-MM-DD format
+  const displayPrice = numericPrice > 0 ? `₹${(numericPrice * multiplier).toLocaleString("en-IN")}` : packageData?.price;
   const todayDate = new Date().toISOString().split("T")[0];
 
   if (loading)
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-[#f68a95] border-opacity-75 mb-4"></div>
-        <p className="text-gray-500 font-medium tracking-wide animate-pulse">
-          Curating your experience...
-        </p>
+        <p className="text-gray-500 font-medium tracking-wide animate-pulse">Curating your experience...</p>
       </div>
     );
 
   if (!packageData)
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-white text-center px-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          Trip Not Found
-        </h2>
-        <p className="text-gray-500 mb-6">
-          The package you are looking for might have been removed or updated.
-        </p>
-        <Link
-          to="/"
-          className="bg-[#f68a95] text-white px-6 py-2 rounded-xl font-bold"
-        >
-          Back to Home
-        </Link>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Trip Not Found</h2>
+        <p className="text-gray-500 mb-6">The package you are looking for might have been removed or updated.</p>
+        <Link to="/" className="bg-[#f68a95] text-white px-6 py-2 rounded-xl font-bold">Back to Home</Link>
       </div>
     );
 
@@ -390,75 +361,45 @@ const TripDetails = () => {
       `}</style>
 
       {/* --- HEADER --- */}
-      <header
-        className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? "shadow-md py-2" : "py-4"} bg-[#f68a95]`}
-      >
+      <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? "shadow-md py-2" : "py-4"} bg-[#f68a95]`}>
         <div className="container mx-auto px-4 flex items-center justify-between">
           <Link to="/" className="hover:opacity-90 transition-opacity">
-            <img
-              src={assets.logo}
-              alt="Destiny"
-              className="h-8 md:h-10 w-auto brightness-0 invert"
-            />
+            <img src={assets.logo} alt="Destiny" className="h-8 md:h-10 w-auto brightness-0 invert" />
           </Link>
         </div>
       </header>
 
       {/* --- BREADCRUMBS --- */}
       <div className="pt-24 pb-4 container mx-auto px-4 text-xs md:text-sm text-gray-500 flex items-center gap-2">
-        <Link to="/" className="hover:text-[#f68a95] transition-colors">
-          Home
-        </Link>
+        <Link to="/" className="hover:text-[#f68a95] transition-colors">Home</Link>
         <ChevronDown className="rotate-[-90deg]" size={12} />
-        <span className="capitalize text-gray-800 font-bold truncate max-w-[200px]">
-          {packageData.title}
-        </span>
+        <span className="capitalize text-gray-800 font-bold truncate max-w-[200px]">{packageData.title}</span>
       </div>
 
       {/* --- HERO GALLERY --- */}
       <div className="container mx-auto px-4 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-4 h-[400px] md:h-[500px] rounded-2xl overflow-hidden relative">
           <div className="md:col-span-2 md:row-span-2 relative group cursor-pointer h-full">
-            <img
-              src={packageData.gallery[0]}
-              alt="Main"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
+            <img src={packageData.gallery[0]} alt="Main" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60"></div>
           </div>
           {packageData.gallery[1] && (
             <div className="hidden md:block relative group cursor-pointer h-full">
-              <img
-                src={packageData.gallery[1]}
-                alt="Side 1"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
+              <img src={packageData.gallery[1]} alt="Side 1" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
           )}
           {packageData.gallery[2] && (
             <div className="hidden md:block relative group cursor-pointer h-full">
-              <img
-                src={packageData.gallery[2]}
-                alt="Side 2"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
+              <img src={packageData.gallery[2]} alt="Side 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
           )}
           {packageData.gallery[3] && (
             <div className="hidden md:block relative group cursor-pointer h-full">
-              <img
-                src={packageData.gallery[3]}
-                alt="Side 3"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
+              <img src={packageData.gallery[3]} alt="Side 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
           )}
           <div className="hidden md:block relative group cursor-pointer h-full">
-            <img
-              src={packageData.gallery[0]}
-              alt="Side 4"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
+            <img src={packageData.gallery[0]} alt="Side 4" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
           </div>
         </div>
       </div>
@@ -469,34 +410,20 @@ const TripDetails = () => {
           {/* Title & Stats */}
           <div className="mb-8 border-b border-gray-100 pb-8">
             <div className="flex flex-wrap gap-2 mb-3">
-              <span className="bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-xs font-bold border border-orange-100">
-                Bestseller
-              </span>
-              <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold border border-blue-100">
-                Customizable
-              </span>
+              <span className="bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-xs font-bold border border-orange-100">Bestseller</span>
+              <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold border border-blue-100">Customizable</span>
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 font-tangerine-custom leading-tight">
-              {packageData.title}
-            </h1>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 font-tangerine-custom leading-tight">{packageData.title}</h1>
             <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600 font-medium">
-              <span className="flex items-center gap-2">
-                <MapPin size={18} className="text-[#f68a95]" />{" "}
-                {packageData.location}
-              </span>
-              <span className="flex items-center gap-2">
-                <Clock size={18} className="text-[#f68a95]" />{" "}
-                {packageData.duration}
-              </span>
+              <span className="flex items-center gap-2"><MapPin size={18} className="text-[#f68a95]" /> {packageData.location}</span>
+              <span className="flex items-center gap-2"><Clock size={18} className="text-[#f68a95]" /> {packageData.duration}</span>
             </div>
           </div>
 
           {/* About */}
           <div className="mb-10">
             <h2 className="text-2xl font-bold mb-4">Experience the Journey</h2>
-            <p className="text-gray-600 leading-relaxed text-lg">
-              {packageData.description}
-            </p>
+            <p className="text-gray-600 leading-relaxed text-lg">{packageData.description}</p>
           </div>
 
           {/* Sticky Tabs */}
@@ -518,10 +445,7 @@ const TripDetails = () => {
           {activeTab === "itinerary" && (
             <div className="mb-12">
               {packageData.itinerary.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex gap-4 md:gap-6 mb-8 group relative"
-                >
+                <div key={idx} className="flex gap-4 md:gap-6 mb-8 group relative">
                   <div className="flex flex-col items-center">
                     <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-[#f68a95] to-[#e75480] text-white flex items-center justify-center font-bold text-sm md:text-base shrink-0 shadow-lg z-10 ring-4 ring-white">
                       {item.day}
@@ -535,21 +459,13 @@ const TripDetails = () => {
                     onClick={() => setOpenDay(openDay === idx ? -1 : idx)}
                   >
                     <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-lg font-bold text-gray-800">
-                        {item.title}
-                      </h3>
-                      <div
-                        className={`transform transition-transform duration-300 ${openDay === idx ? "rotate-180" : ""}`}
-                      >
+                      <h3 className="text-lg font-bold text-gray-800">{item.title}</h3>
+                      <div className={`transform transition-transform duration-300 ${openDay === idx ? "rotate-180" : ""}`}>
                         <ChevronDown size={20} className="text-gray-400" />
                       </div>
                     </div>
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ${openDay === idx ? "max-h-96 opacity-100 mt-3" : "max-h-0 opacity-0"}`}
-                    >
-                      <p className="text-gray-600 leading-relaxed text-sm md:text-base">
-                        {item.desc}
-                      </p>
+                    <div className={`overflow-hidden transition-all duration-300 ${openDay === idx ? "max-h-96 opacity-100 mt-3" : "max-h-0 opacity-0"}`}>
+                      <p className="text-gray-600 leading-relaxed text-sm md:text-base">{item.desc}</p>
                     </div>
                   </div>
                 </div>
@@ -560,34 +476,18 @@ const TripDetails = () => {
           {activeTab === "inclusions" && (
             <div className="grid md:grid-cols-2 gap-6 mb-12 animate-fadeIn">
               <div className="bg-green-50/30 p-6 rounded-2xl border border-green-100/50">
-                <h3 className="text-lg font-bold text-green-700 mb-4 flex items-center gap-2">
-                  <CheckCircle size={20} /> Included
-                </h3>
+                <h3 className="text-lg font-bold text-green-700 mb-4 flex items-center gap-2"><CheckCircle size={20} /> Included</h3>
                 <ul className="space-y-3">
                   {packageData.inclusions.map((inc, i) => (
-                    <li key={i} className="flex gap-3 text-gray-700 text-sm">
-                      <CheckCircle
-                        size={16}
-                        className="text-green-500 shrink-0 mt-0.5"
-                      />{" "}
-                      {inc}
-                    </li>
+                    <li key={i} className="flex gap-3 text-gray-700 text-sm"><CheckCircle size={16} className="text-green-500 shrink-0 mt-0.5" /> {inc}</li>
                   ))}
                 </ul>
               </div>
               <div className="bg-red-50/30 p-6 rounded-2xl border border-red-100/50">
-                <h3 className="text-lg font-bold text-red-700 mb-4 flex items-center gap-2">
-                  <XCircle size={20} /> Not Included
-                </h3>
+                <h3 className="text-lg font-bold text-red-700 mb-4 flex items-center gap-2"><XCircle size={20} /> Not Included</h3>
                 <ul className="space-y-3">
                   {packageData.exclusions.map((exc, i) => (
-                    <li key={i} className="flex gap-3 text-gray-600 text-sm">
-                      <XCircle
-                        size={16}
-                        className="text-red-400 shrink-0 mt-0.5"
-                      />{" "}
-                      {exc}
-                    </li>
+                    <li key={i} className="flex gap-3 text-gray-600 text-sm"><XCircle size={16} className="text-red-400 shrink-0 mt-0.5" /> {exc}</li>
                   ))}
                 </ul>
               </div>
@@ -597,15 +497,10 @@ const TripDetails = () => {
           {activeTab === "policies" && (
             <div className="space-y-4 mb-12 animate-fadeIn">
               {packageData.policies.map((pol, i) => (
-                <div
-                  key={i}
-                  className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"
-                >
+                <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                   <h3 className="font-bold text-gray-900 mb-3">{pol.title}</h3>
                   <ul className="list-disc pl-5 space-y-2 text-gray-600 text-sm">
-                    {pol.rules.map((rule, r) => (
-                      <li key={r}>{rule}</li>
-                    ))}
+                    {pol.rules.map((rule, r) => (<li key={r}>{rule}</li>))}
                   </ul>
                 </div>
               ))}
@@ -615,36 +510,20 @@ const TripDetails = () => {
           {activeTab === "reviews" && (
             <div className="mb-12 animate-fadeIn">
               <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                  Traveler Experiences
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Read what our clients have to say about their journey with
-                  Destiny.
-                </p>
+                <h3 className="text-2xl font-bold text-gray-900 mb-1">Traveler Experiences</h3>
+                <p className="text-sm text-gray-500">Read what our clients have to say about their journey with Destiny.</p>
               </div>
               <div className="space-y-6">
                 {testimonials.slice(0, 3).map((review) => (
-                  <div
-                    key={review.id}
-                    className="border-b border-gray-100 pb-6 last:border-0"
-                  >
+                  <div key={review.id} className="border-b border-gray-100 pb-6 last:border-0">
                     <div className="flex items-center gap-3 mb-3">
-                      <img
-                        src={review.img}
-                        alt={review.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
+                      <img src={review.img} alt={review.name} className="w-10 h-10 rounded-full object-cover" />
                       <div>
-                        <p className="font-bold text-sm text-gray-900">
-                          {review.name}
-                        </p>
+                        <p className="font-bold text-sm text-gray-900">{review.name}</p>
                         <p className="text-xs text-gray-500">{review.date}</p>
                       </div>
                     </div>
-                    <p className="text-gray-600 text-sm italic">
-                      "{review.text}"
-                    </p>
+                    <p className="text-gray-600 text-sm italic">"{review.text}"</p>
                   </div>
                 ))}
               </div>
@@ -652,30 +531,21 @@ const TripDetails = () => {
           )}
         </div>
 
-        {/* RIGHT SIDEBAR (Desktop) */}
         {/* RIGHT SIDEBAR / MOBILE FORM */}
         <div id="booking-section" className="col-span-1 lg:col-span-1 mt-8 lg:mt-0 mb-24 lg:mb-0">
           <div className="sticky top-24">
             <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 overflow-hidden">
               <div className="p-6 border-b border-gray-50 bg-gray-50/50">
-                <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">
-                  Total Price
-                </p>
+                <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Total Price</p>
                 <div className="flex items-end gap-2">
-                  <span className="text-3xl font-bold text-gray-900">
-                    {displayPrice}
-                  </span>
+                  <span className="text-3xl font-bold text-gray-900">{displayPrice}</span>
                 </div>
-                <div className="mt-2 text-green-600 text-xs font-bold flex items-center gap-1">
-                  <CheckCircle size={12} /> Inclusive of all taxes
-                </div>
+                <div className="mt-2 text-green-600 text-xs font-bold flex items-center gap-1"><CheckCircle size={12} /> Inclusive of all taxes</div>
               </div>
 
               <div className="p-6 space-y-5">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-500 uppercase">
-                    Travel Date <span className="text-red-500">*</span>
-                  </label>
+                  <label className="text-xs font-bold text-gray-500 uppercase">Travel Date <span className="text-red-500">*</span></label>
                   <input
                     type="date"
                     min={todayDate}
@@ -686,17 +556,11 @@ const TripDetails = () => {
                     }}
                     className={`w-full bg-gray-50 border rounded-lg px-4 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#f68a95] transition-all ${formError === "date" ? "border-red-500" : "border-gray-200"}`}
                   />
-                  {formError === "date" && (
-                    <p className="text-xs text-red-500 mt-1">
-                      Please select a future travel date.
-                    </p>
-                  )}
+                  {formError === "date" && <p className="text-xs text-red-500 mt-1">Please select a future travel date.</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-500 uppercase">
-                    Travelers <span className="text-red-500">*</span>
-                  </label>
+                  <label className="text-xs font-bold text-gray-500 uppercase">Travelers <span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-3 gap-2">
                     {[1, 2, "3+"].map((num) => (
                       <button
@@ -715,11 +579,7 @@ const TripDetails = () => {
                       </button>
                     ))}
                   </div>
-                  {formError === "travelers" && (
-                    <p className="text-xs text-red-500 mt-1">
-                      Please select the number of travelers.
-                    </p>
-                  )}
+                  {formError === "travelers" && <p className="text-xs text-red-500 mt-1">Please select the number of travelers.</p>}
                 </div>
 
                 <button
@@ -731,23 +591,15 @@ const TripDetails = () => {
               </div>
 
               <div className="p-4 bg-gray-50 text-center border-t border-gray-100">
-                <p className="text-xs text-gray-500 flex justify-center items-center gap-2">
-                  <ShieldCheck size={14} /> 100% Safe & Secure
-                </p>
+                <p className="text-xs text-gray-500 flex justify-center items-center gap-2"><ShieldCheck size={14} /> 100% Safe & Secure</p>
               </div>
             </div>
 
             <div className="mt-6 flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                <Phone size={20} />
-              </div>
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500"><Phone size={20} /></div>
               <div>
-                <p className="text-xs font-bold text-gray-500 uppercase">
-                  Need Help?
-                </p>
-                <p className="text-sm font-bold text-gray-900">
-                  +91 98765 43210
-                </p>
+                <p className="text-xs font-bold text-gray-500 uppercase">Need Help?</p>
+                <p className="text-sm font-bold text-gray-900">+91 98765 43210</p>
               </div>
             </div>
           </div>
@@ -757,9 +609,7 @@ const TripDetails = () => {
       {/* --- SIMILAR TRIPS SECTION --- */}
       {similarTrips.length > 0 && (
         <div className="container mx-auto px-4 py-12 border-t border-gray-100 mt-8">
-          <h2 className="text-2xl md:text-3xl font-bold mb-8 font-tangerine-custom text-gray-800">
-            You Might Also Like
-          </h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-8 font-tangerine-custom text-gray-800">You Might Also Like</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {similarTrips.map((trip) => (
               <div key={trip.id} className="h-[420px]">
@@ -773,9 +623,7 @@ const TripDetails = () => {
       {/* --- MOBILE STICKY ACTION BAR --- */}
       <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 lg:hidden z-[100] flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
         <div>
-          <p className="text-xs text-gray-500 uppercase font-bold">
-            Total Price
-          </p>
+          <p className="text-xs text-gray-500 uppercase font-bold">Total Price</p>
           <p className="text-xl font-bold text-gray-900">{displayPrice}</p>
         </div>
         <button

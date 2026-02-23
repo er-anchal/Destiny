@@ -8,10 +8,13 @@ import Honeymoon from './pages/Honeymoon.jsx';
 import About from './pages/About.jsx';
 import ScrollToTop from './components/common/ScrollToTop';
 import FloatingContactButton from './components/common/FloatingContactButton'; 
-import { AuthProvider, useAuth } from './context/AuthContext'; // Import AuthProvider here
+import { AuthProvider, useAuth } from './context/AuthContext'; 
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import ManagePackages from './pages/Admin/ManagePackages';
 import Customers from './pages/Admin/Customers';
+
+// --- NEW IMPORT ---
+import Profile from './pages/Profile.jsx'; 
 
 import Navbar from './components/layout/Navbar/Navbar';
 import Footer from './components/layout/Footer/Footer';
@@ -25,7 +28,7 @@ const AdminRoute = ({ children }) => {
 
 // 1. Create a child component to handle the Logic
 const AppContent = () => {
-  const location = useLocation(); // ✅ Safe to use here because it's inside <Router>
+  const location = useLocation(); 
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isAdminPage = location.pathname.startsWith('/admin');
@@ -48,6 +51,9 @@ const AppContent = () => {
         <Route path="/honeymoon" element={<Honeymoon />} />
         <Route path="/about" element={<About />} />
         <Route path="/package/:id" element={<TripDetails />} />
+        
+        {/* --- USER PROFILE ROUTE --- */}
+        <Route path="/profile" element={<Profile />} />
         
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>}>
            <Route path="dashboard" element={<h2>Welcome to Dashboard</h2>} />
