@@ -146,7 +146,7 @@ const SignInForm = () => {
         value={formData.email} onChange={handleChange} error={errors.email} 
       />
       
-      <div className="w-full flex flex-col max-w-[380px]">
+      <div className="auth-password-wrapper">
         <InputField 
           icon="🔒" type="password" name="password" placeholder="Password" 
           value={formData.password} onChange={handleChange} error={errors.password} 
